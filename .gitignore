@@ -1,0 +1,5 @@
+/code/vendor
+.idea
+.git
+.gitignore
+/db
