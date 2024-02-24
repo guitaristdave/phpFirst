@@ -1,15 +1,18 @@
 <?php
 
-require_once(__DIR__ . '/vendor/autoload.php');
+
+require_once('./vendor/autoload.php');
 
 use Geekbrains\Application1\Application\Application;
-use Geekbrains\Application1\Application\Render;
-
 
 try{
     $app = new Application();
-    echo $app->run();
-} catch(Exception $e){
-    echo Render::renderExceptionPage($e);
 
+    $result = $app->runApp();
+
+    echo $result;
 }
+catch(Exception $e){
+    echo $e->getMessage();
+}
+
