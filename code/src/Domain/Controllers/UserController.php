@@ -10,11 +10,8 @@ use Geekbrains\Application1\Domain\Models\User;
 class UserController extends AbstractController {
 
     protected array $actionsPermissions = [
-        'actionHash' => ['admin'],
-        'actionSave' => ['admin'],
-        'actionEdit' => ['admin'],
-        'actionIndex' => ['admin'],
-        'actionLogout' => ['admin'],
+        'actionHash' => ['admin', 'some'],
+        'actionSave' => ['admin']
     ];
 
     public function actionIndex(): string {
@@ -40,6 +37,27 @@ class UserController extends AbstractController {
         }
     }
 
+    public function actionIndexRefresh(){
+        $limit = null;
+
+        if(isset($_POST['maxId']) && ($_POST['maxId'] > 0)){
+            $limit = $_POST['maxId'];
+        }
+
+        $users = User::getAllUsersFromStorage($limit);
+        $usersData = [];
+
+
+
+        if(count($users) > 0) {
+            foreach($users as $user){
+                $usersData[] = $user->getUserDataAsArray();
+            }
+        }
+
+        return json_encode($usersData);
+    }
+
     public function actionSave(): string {
         if(User::validateRequestData()) {
             $user = new User();
@@ -60,66 +78,13 @@ class UserController extends AbstractController {
         }
     }
 
-    public function actionDelete(): string {
-        if(User::exists($_GET['user_id'])) {
-            User::deleteFromStorage($_GET['user_id']);
-
-            header('Location: /user');
-            die();
-
-        }
-        else {
-            throw new \Exception("Пользователь не существует");
-        }
-    }
-
     public function actionEdit(): string {
         $render = new Render();
-
-
-        $action = '/user/save';
-        if(isset($_GET['user_id'])){
-            $userId = $_GET['user_id'];
-            $action = '/user/update';
-            $userData = User::getUserDataByID($userId);
-
-        }
 
         return $render->renderPageWithForm(
             'user-form.twig',
             [
-                'title' => 'Форма создания пользователя',
-                'user_data'=> $userData ?? [],
-                'action' => $action
-            ]);
-    }
-
-    public function actionUpdate(): string {
-        if(User::exists($_POST['user_id'])) {
-            $user = new User();
-            $user->setUserId($_POST['user_id']);
-
-            $arrayData = [];
-
-            if(isset($_POST['name']))
-                $arrayData['user_name'] = $_POST['name'];
-
-            if(isset($_POST['lastname'])) {
-                $arrayData['user_lastname'] = $_POST['lastname'];
-            }
-
-            $user->updateUser($arrayData);
-        }
-        else {
-            throw new \Exception("Пользователь не существует");
-        }
-
-        $render = new Render();
-        return $render->renderPage(
-            'user-created.twig',
-            [
-                'title' => 'Пользователь обновлен',
-                'message' => "Обновлен пользователь " . $user->getUserId()
+                'title' => 'Форма создания пользователя'
             ]);
     }
 
@@ -137,23 +102,12 @@ class UserController extends AbstractController {
         return Auth::getPasswordHash($_GET['pass_string']);
     }
 
-    /**
-     * @throws \Exception
-     */
     public function actionLogin(): string {
         $result = false;
 
         if(isset($_POST['login']) && isset($_POST['password'])){
             $result = Application::$auth->proceedAuth($_POST['login'], $_POST['password']);
-            if($result &&
-                isset($_POST['user-remember']) && $_POST['user-remember'] == 'remember'){
-                $token = Application::$auth->generateToken($_SESSION['auth']['id_user']);
-
-                User::setToken($_SESSION['auth']['id_user'], $token);
-            }
         }
-
-
 
         if(!$result){
             $render = new Render();
@@ -170,12 +124,5 @@ class UserController extends AbstractController {
             header('Location: /');
             return "";
         }
-    }
-    public function actionLogout(): void {
-        User::destroyToken();
-        session_destroy();
-        unset($_SESSION['auth']);
-        header("Location: /");
-        die();
     }
 }
